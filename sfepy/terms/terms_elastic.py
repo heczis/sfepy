@@ -710,3 +710,35 @@ class NonsymElasticTerm(Term):
 
         else:
             self.function = terms.d_lin_elastic
+
+class DispersionMixedTerm(Term):
+    r"""
+    :Definition:
+
+    .. math::
+        \int_{\Omega} D_{ijkl} e_{ij}(\ul{u}) g_{kl}(\ul{v})
+
+    where
+    .. math::
+        g_{kl}(\ul{v}) = \kappa_k v_l
+
+    for a given vector :math:`\ul{\kappa}`
+    """
+    name = 'dw_dispersion_mixed'
+    arg_types = (('material_1', 'material_2', 'virtual', 'state'),)
+    arg_shapes = {
+        'material_1' : 'S, S', 'virtual' : ('D', 'state'), 'state' : 'D',
+        'material_2' : 'D'}
+    modes = ('weak',)
+
+    @staticmethod
+    def function(out, mat0, mat1, virtual, strain):
+        return 0
+
+    def get_fargs(self, mat0, mat1, virtual, state, mode=None, term_mode=None,
+                  diff_var=None, **kwargs):
+        if diff_var is None:
+            strain = self.get(state, 'cauchy_strain')
+        else:
+            strain = nm.array([0], ndmin=4, dtype=nm.float64)
+        return mat0, mat1, virtual, strain
