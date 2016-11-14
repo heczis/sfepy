@@ -732,13 +732,41 @@ class DispersionMixedTerm(Term):
     modes = ('weak',)
 
     @staticmethod
-    def function(out, mat0, mat1, virtual, strain):
-        return 0
+    def function(out, qp_vals, vq):
+        status = vq.integrate(out, qp_vals, 1)
+        return status
 
     def get_fargs(self, mat0, mat1, virtual, state, mode=None, term_mode=None,
                   diff_var=None, **kwargs):
-        if diff_var is None:
-            strain = self.get(state, 'cauchy_strain')
-        else:
-            strain = nm.array([0], ndmin=4, dtype=nm.float64)
-        return mat0, mat1, virtual, strain
+        vq, _ = self.get_mapping(virtual)
+        uq, _ = self.get_mapping(state)
+
+        n_el, n_qp, _, _ = mat0.shape
+        n_bf = uq.bf.shape[-1]
+        n_bfg = vq.bfg.shape[-1]
+        d_coef = nm.array([[
+            get_t4_from_t2s(mat0[iel, iqp])
+            for iqp in range(n_qp)] for iel in range(n_el)])
+
+        qp_vals = nm.array([[[[
+            nm.einsum(
+                'ijkl,k,j',
+                d_coef[iel, iqp], mat1[iel, iqp, 0], vq.bfg[iel, iqp, :, beta])
+            *uq.bf[0, iqp, 0, alpha]
+            for alpha in range(n_bf)] for beta in range(n_bfg)]
+                             for iqp in range(n_qp)] for iel in range(n_el)])
+        qp_vals = nm.array([[
+            self._4th_to_2nd(qp_vals[iel, iqp])
+            for iqp in range(n_qp)] for iel in range(n_el)])
+        return qp_vals, vq
+
+    @staticmethod
+    def _4th_to_2nd(arr):
+        nb1, nb2, nd1, nd2 = arr.shape
+        out = nm.zeros((nb1*nd1, nb2*nd2))
+        for ii in range(nb2):
+            for jj in range(nd2):
+                for kk in range(nb1):
+                    for ll in range(nd2):
+                        out[kk*nd2+ll, ii*nd1+jj] = arr[kk, ii, ll, jj]
+        return out
