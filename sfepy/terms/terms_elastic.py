@@ -3,6 +3,7 @@ import numpy as nm
 from sfepy.base.base import use_method_with_name, assert_
 from sfepy.linalg import dot_sequences
 from sfepy.homogenization.utils import iter_sym
+from sfepy.mechanics.tensors import get_t4_from_t2s
 from sfepy.terms.terms import Term, terms
 from sfepy.terms.terms_th import THTerm, ETHTerm
 
@@ -730,6 +731,7 @@ class DispersionMixedTerm(Term):
         'material_1' : 'S, S', 'virtual' : ('D', 'state'), 'state' : 'D',
         'material_2' : 'D'}
     modes = ('weak',)
+    first = True
 
     @staticmethod
     def function(out, qp_vals, vq):
@@ -748,25 +750,59 @@ class DispersionMixedTerm(Term):
             get_t4_from_t2s(mat0[iel, iqp])
             for iqp in range(n_qp)] for iel in range(n_el)])
 
-        qp_vals = nm.array([[[[
-            nm.einsum(
-                'ijkl,k,j',
-                d_coef[iel, iqp], mat1[iel, iqp, 0], vq.bfg[iel, iqp, :, beta])
-            *uq.bf[0, iqp, 0, alpha]
-            for alpha in range(n_bf)] for beta in range(n_bfg)]
-                             for iqp in range(n_qp)] for iel in range(n_el)])
         qp_vals = nm.array([[
-            self._4th_to_2nd(qp_vals[iel, iqp])
+            self.get_k(get_t4_from_t2s(mat0[iel, iqp]), mat1[iel, iqp, 0],
+                       uq.bf[0, iqp, 0], vq.bfg[iel, iqp])
             for iqp in range(n_qp)] for iel in range(n_el)])
         return qp_vals, vq
 
     @staticmethod
-    def _4th_to_2nd(arr):
-        nb1, nb2, nd1, nd2 = arr.shape
-        out = nm.zeros((nb1*nd1, nb2*nd2))
-        for ii in range(nb2):
-            for jj in range(nd2):
-                for kk in range(nb1):
-                    for ll in range(nd2):
-                        out[kk*nd2+ll, ii*nd1+jj] = arr[kk, ii, ll, jj]
-        return out
+    def get_k(d_coef, kappa, bf, bfg):
+        def get_sum(i, l, alpha, beta):
+            return (
+                nm.einsum('ijkl,k,j', d_coef, kappa, bfg[:,alpha])[i, l]
+                * bf[beta])
+        K = nm.array([
+            [
+                get_sum(0, 0, 0, 0),
+                get_sum(0, 0, 1, 0),
+                get_sum(0, 0, 2, 0),
+                get_sum(1, 0, 0, 0),
+                get_sum(1, 0, 1, 0),
+                get_sum(1, 0, 2, 0),],
+            [
+                get_sum(0, 0, 0, 1),
+                get_sum(0, 0, 1, 1),
+                get_sum(0, 0, 2, 1),
+                get_sum(1, 0, 0, 1),
+                get_sum(1, 0, 1, 1),
+                get_sum(1, 0, 2, 1),],
+            [
+                get_sum(0, 0, 0, 2),
+                get_sum(0, 0, 1, 2),
+                get_sum(0, 0, 2, 2),
+                get_sum(1, 0, 0, 2),
+                get_sum(1, 0, 1, 2),
+                get_sum(1, 0, 2, 2),],
+            [
+                get_sum(0, 1, 0, 0),
+                get_sum(0, 1, 1, 0),
+                get_sum(0, 1, 2, 0),
+                get_sum(1, 1, 0, 0),
+                get_sum(1, 1, 1, 0),
+                get_sum(1, 1, 2, 0),],
+            [
+                get_sum(0, 1, 0, 1),
+                get_sum(0, 1, 1, 1),
+                get_sum(0, 1, 2, 1),
+                get_sum(1, 1, 0, 1),
+                get_sum(1, 1, 1, 1),
+                get_sum(1, 1, 2, 1),],
+            [
+                get_sum(0, 1, 0, 2),
+                get_sum(0, 1, 1, 2),
+                get_sum(0, 1, 2, 2),
+                get_sum(1, 1, 0, 2),
+                get_sum(1, 1, 1, 2),
+                get_sum(1, 1, 2, 2),],])
+        return K
