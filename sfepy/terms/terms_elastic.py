@@ -712,6 +712,41 @@ class NonsymElasticTerm(Term):
         else:
             self.function = terms.d_lin_elastic
 
+class MassMatrixTerm(Term):
+    r"""
+    Replacement of dw_volume_dot.
+    """
+    name = 'dw_mass_matrix'
+    arg_types = (('material', 'virtual', 'state'),)
+    arg_shapes = {
+        'material': '1,1', 'virtual': ('D', 'state'), 'state': 'D',}
+    modes = ('weak',)
+
+    @staticmethod
+    def function(out, qp_vals, vq):
+        status = vq.integrate(out, qp_vals, 1)
+        return status
+
+    def get_fargs(self, mat, virtual, state, mode=None, term_mode=None,
+                  diff_var=None, **kwargs):
+        vq, _ = self.get_mapping(virtual)
+        uq, _ = self.get_mapping(state)
+
+        n_el, n_qp, _, _ = mat.shape
+        n_bf = uq.bf.shape[-1]
+        qp_vals = nm.array([[
+            mat[iel,iqp,0,0] * self.get_m(uq.bf[0,iqp,0], vq.bf[0,iqp,0])
+            for iqp in range(n_qp)] for iel in range(n_el)])
+        return qp_vals, vq
+
+    @staticmethod
+    def get_m(u, v):
+        m_14 = nm.array([[
+            u[alpha]*v[beta]
+            for beta in range(len(v))] for alpha in range(len(u))])
+        m_12 = nm.concatenate([m_14, m_14])
+        return nm.concatenate([m_12, m_12], axis=1)
+
 class DispersionMixedTerm(Term):
     r"""
     :Definition:
