@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 """
-Compute diffusion-limited oxidation and ageing in rigid medium.
+Uniaxial tension of a block of hypoelastic material, i.e. the stress-strain
+relationship is given as:
+
+.. math::
+    \dot\sigma = f(\dot\epsilon)
+
+
 """
 from __future__ import print_function, absolute_import
 import os
