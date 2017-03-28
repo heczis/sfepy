@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Compute diffusion-limited oxidation and ageing in rigid medium.
 """
@@ -5,8 +6,7 @@ from __future__ import print_function, absolute_import
 import os
 import sys
 
-DATA_DIR = '/home/jan/Documents/PYTHON/sfepy3'
-sys.path.append(DATA_DIR)
+sys.path.append('.')
 
 import numpy as np
 
