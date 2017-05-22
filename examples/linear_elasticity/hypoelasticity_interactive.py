@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-"""
+r"""
 Uniaxial tension of a block of hypoelastic material, i.e. the stress-strain
 relationship is given as:
 
 .. math::
-    \dot\sigma = f(\dot\epsilon)
+    \dot{\ull{\sigma}} = f(\dot{\ull{e}}(\ul{u})) .
 
-
+The function 
 """
 from __future__ import print_function, absolute_import
 import os
